@@ -7,6 +7,7 @@
 #include <errno.h>      // Error number definitions
 #include <termios.h>    // POSIX terminal control definitions
 #include <iostream>
+#include <time.h>
 
 const int MAX_LINE_LENGTH = 100;
 
@@ -306,8 +307,19 @@ void UbloxGps::decodeNMEA(char* str) {
                 (int)(fix_time+0.5)%100
             );
             printf(date_time_str);
+            struct tm t;
+            t.tm_year = (int)fix_date%100+100;
+            t.tm_mon = (int)fix_date/100%100-1;
+            t.tm_mday = (int)fix_date/100/100%100;
+            t.tm_hour = (int)(fix_time+0.5)/100/100%100;
+            t.tm_min = (int)(fix_time+0.5)/100%100;
+            t.tm_sec = (int)(fix_time+0.5)/100;
+            printf("Minutes %d\n",t.tm_min);
+            struct timespec epoch_spec;
+            epoch_spec.tv_sec = timegm(&t);
+            printf("Epoch: %ld", epoch_spec.tv_sec);
+            clock_settime(CLOCK_REALTIME,&epoch_spec);
             clock_set = true;
-            //TODO: call timedatectl to actually set clock
         }
         if(active) {
             double latitude = (strtol(latitude_raw, NULL, 10) / 100) + strtod(latitude_raw+2,NULL) / 60;
@@ -319,7 +331,6 @@ void UbloxGps::decodeNMEA(char* str) {
                 longitude*= -1;
             }
             double bearing = strtod(bearing_raw, NULL);
-            printf("active\n");
             setPosition(latitude,longitude);
             if(bearing_raw[0] != '\0') {
                 setBearing(bearing);
