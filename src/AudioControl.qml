@@ -3,9 +3,10 @@ import QtQuick 2.0
 QtObject {
     property int volume: -20
     property string source_type
+    property bool power: false
     property bool mute: false
-
-    onMuteChanged: console.log("Mute = " +mute.toString())
+    onMuteChanged: calc_mute()
+    onPowerChanged: calc_mute()
 
     function init() {
         Amp.line_outputs([7]);
@@ -47,16 +48,27 @@ QtObject {
         }
     }
     function toggle_mute() {
-        if(mute) {
+        mute = !mute;
+        calc_mute();
+    }
+    function calc_mute() {
+        if(power) {
+            Amp.play();
+            Arduino.sendCmd("A1");
+        } else {
+            Amp.hi_z();
+            Arduino.sendCmd("A0");
+        }
+        if(mute || !power) {
+            Dsp.volume_slew("Master_Volume", -100);
+            Mpd.pause();
+        }
+        if(!mute && power) {
             Dsp.volume_slew("Master_Volume", volume);
             if(source_type == "usb") {
                 Mpd.resume();
             }
-        } else {
-            Dsp.volume_slew("Master_Volume", -100);
-            Mpd.pause();
         }
-        mute = !mute;
     }
     function selectSource(type) {
         source_box.clear();

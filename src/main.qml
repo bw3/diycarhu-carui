@@ -192,12 +192,10 @@ Connections {
                 Arduino.sendCmd("P250");
                 break;
             case "V1":
-                Amp.play();
-                Arduino.sendCmd("A1");
+                audioControl.power = true;
                 break;
             case "V0":
-                Amp.hi_z();
-                Arduino.sendCmd("A0");
+                audioControl.power = false;
                 break;
         }
     }
