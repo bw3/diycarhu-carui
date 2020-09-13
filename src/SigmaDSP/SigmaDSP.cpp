@@ -21,20 +21,8 @@ Inputs:   uint8_t i2cAddress; DSP i2c address
           uint8_t resetPin;   pin to reset DSP (optional parameter)
 Returns:  None
 ***************************************/
-SigmaDSP::SigmaDSP(uint8_t i2cAddress, uint8_t device, int8_t resetPin)
-  : _dspAddress(i2cAddress), _deviceType(device), _resetPin(resetPin)
-{
-
-}
-
-
-/***************************************
-Function: begin()
-Purpose:  Starts the i2c interface
-Inputs:   TwoWire Wire;     Wire object (optional parameter)
-Returns:  None
-***************************************/
-void SigmaDSP::begin(int adapter_nr)
+SigmaDSP::SigmaDSP(int adapter_nr, uint8_t i2cAddress)
+  : _dspAddress(i2cAddress)
 {
   int file;
   char filename[20];
@@ -47,14 +35,17 @@ void SigmaDSP::begin(int adapter_nr)
   if (ioctl(_i2c_fd, I2C_SLAVE, _dspAddress) < 0) {
     exit(1);
   }
+}
 
-  // Reset DSP if pin is present
-  if(_resetPin >= 0)
-  {
-    //pinMode(_resetPin, OUTPUT);
-    //digitalWrite(_resetPin, HIGH);
-    //reset();
-  }
+
+/***************************************
+Function: begin()
+Purpose:  Starts the i2c interface
+Inputs:   TwoWire Wire;     Wire object (optional parameter)
+Returns:  None
+***************************************/
+void SigmaDSP::begin(int adapter_nr)
+{
   #if 1
   writeRegister(2076, _coreRegStart.size(), _coreRegStart.data());
   writeRegister(1024, _progData.size(),     _progData.data());
@@ -96,7 +87,7 @@ void SigmaDSP::loadXml(const char* filename)
     XMLNode* coreRegEndNode = hwConfigNode->NextSiblingElement("Register");
     READ_XML_DATA(coreRegEndNode, _coreRegEnd);
     for(XMLNode* mod = ic->FirstChildElement("Module"); mod != NULL; mod = mod->NextSiblingElement("Module")) {
-        std::string cellName = mod->FirstChildElement("CellName")->GetText();
+        QString cellName = mod->FirstChildElement("CellName")->GetText();
         XMLNode* algo = mod->FirstChildElement("Algorithm"); 
         std::string algoName = algo->FirstChildElement("DetailedName")->GetText();
         int param_count=0;
@@ -111,115 +102,42 @@ void SigmaDSP::loadXml(const char* filename)
         }
         if( algoName.rfind("SWGain1940DB",0) != std::string::npos ) {
             _paramMap[cellName] = SigmaDSP::Param(SigmaDSP::Param::ParamType::Volume, addr, param_count/2);
-            printf("Volume : %s\n",cellName.c_str());
-        } else if(algoName.rfind("Gain1940",0) != std::string::npos || algoName.rfind("StereoMixer",0) != std::string::npos ) {
+            printf("Volume : %s\n",cellName.toStdString().c_str());
+        } else if(algoName.rfind("Gain1940",0) != std::string::npos || algoName.rfind("StereoMixer",0) != std::string::npos || algoName.rfind("MultCtrlMixer",0) != std::string::npos ) {
             _paramMap[cellName] = SigmaDSP::Param(SigmaDSP::Param::ParamType::Gain, addr, param_count);
-            printf("Gain (%d): %s\n",param_count, cellName.c_str());
+            printf("Gain (%d): %s\n",param_count, cellName.toStdString().c_str());
         } else if(algoName.rfind("EQ1940",0) != std::string::npos ) {
             _paramMap[cellName] = SigmaDSP::Param(SigmaDSP::Param::ParamType::EqSecondOrder, addr, param_count/5);
-            printf("EqSecondOrder (%d) : %s\n",param_count/5,cellName.c_str());
+            printf("EqSecondOrder (%d) : %s\n",param_count/5,cellName.toStdString().c_str());
         } else if(algoName.rfind("MultCtrlDelGrow",0) != std::string::npos ) {
             _paramMap[cellName] = SigmaDSP::Param(SigmaDSP::Param::ParamType::Delay, addr, param_count/1);
-            printf("Delay  : %s\n",cellName.c_str());
+            printf("Delay  : %s\n",cellName.toStdString().c_str());
+        } else if(algoName.rfind("stereomux1940",0) != std::string::npos || algoName.rfind("monomux1940",0) != std::string::npos) {
+            _paramMap[cellName] = SigmaDSP::Param(SigmaDSP::Param::ParamType::Mux, addr, param_count);
+            printf("Mux  : %s\n",cellName.toStdString().c_str());
+        } else {
+            printf("Unknown  : %s : %s\n",algoName.c_str(),cellName.toStdString().c_str());
         }
     }
 }
 
 /***************************************
-Function: begin()
-Purpose:  Starts the i2c interface
-Inputs:   TwoWire Wire;     Wire object
-          uint8_t sdaPin;   SDA pin
-          uint8_t sclPin;   SCL pin
-Returns:  None
-***************************************/
-/*void SigmaDSP::begin(TwoWire *WireObject, uint8_t sdaPin, uint8_t sclPin)
-{
-  // Store copy the passed object
-  _WireObject = WireObject;
-
-  // This hardware supports redefining SDA and SCL in begin()
-  #if defined(ARDUINO_ARCH_ESP8266) || defined(ARDUINO_ARCH_ESP32) || defined(ARDUINO_ARCH_STM32)
-    _WireObject->begin(sdaPin, sclPin);
-  #else // This does not
-    (void)sdaPin;
-    (void)sclPin;
-    _WireObject->begin();
-  #endif
-
-  // Reset DSP if pin is present
-  if(_resetPin >= 0)
-  {
-    pinMode(_resetPin, OUTPUT);
-    digitalWrite(_resetPin, HIGH);
-    reset();
-  }
-}*/
-
-
-/***************************************
-Function: i2cClock()
-Purpose:  Sets the i2c clock speed
-Inputs:   uint32_t clock; clock speed in Hz
-Returns:  None
-***************************************/
-void SigmaDSP::i2cClock(uint32_t clock)
-{
-  //_WireObject->setClock(clock);
-}
-
-
-/***************************************
-Function: i2cClock()
-Purpose:  Physically resets the DSP
-Inputs:   None
-Returns:  None
-***************************************/
-void SigmaDSP::reset()
-{
-  if(_resetPin >= 0) // Only run of reset pin is present
-  {
-    //digitalWrite(_resetPin, LOW);
-    //delay(200);
-    //digitalWrite(_resetPin, HIGH);
-  }
-}
-
-
-/***************************************
-Function: ping()
-Purpose:  Sends a i2c ping message
-Inputs:   none
-Returns:  0 - success: ack received
-          2 - error: address send, nack received
-          3 - error: data send, nack received
-          4 - error: unknown i2c error
-***************************************/
-uint8_t SigmaDSP::ping()
-{
-  //_WireObject->beginTransmission(_dspAddress);
-  return 0; //_WireObject->endTransmission();
-}
-
-
-/***************************************
 Function: mux()
 Purpose:  Controls a mux. The mux can only be a single address block, which
           is the clickless SW slew mux
-Inputs:   std::string name;  DSP memory address
+Inputs:   QString name;  DSP memory address
           uint8_t index;                Index (the signal) you want to switch to (0, 1, 2, ...)
           uint8_t numberOfIndexes;      The total number of indexes (2 or more)
 Returns:  None
 ***************************************/
-bool SigmaDSP::mux(std::string name, uint8_t index, uint8_t numberOfIndexes)
+bool SigmaDSP::demux(QString name, int index)
 {
   auto it = _paramMap.find(name);
-  if( it == _paramMap.end() || it->second.type != SigmaDSP::Param::ParamType::Mux ) {
+  if( it == _paramMap.end() || it->second.type != SigmaDSP::Param::ParamType::Demux ) {
     return false;
   }
   uint16_t startMemoryAddress = it->second.addr;
   // Index number is actually not needed, but kept for compatibility with demux
-  (void)numberOfIndexes;
 
   safeload_write(startMemoryAddress, index);
   return true;
@@ -229,31 +147,38 @@ bool SigmaDSP::mux(std::string name, uint8_t index, uint8_t numberOfIndexes)
 /***************************************
 Function: demux()
 Purpose:  Controls a demux.
-Inputs:   std::string name;  DSP memory address
+Inputs:   QString name;  DSP memory address
           uint8_t index;                Index (the signal) you want to switch to (0, 1, 2, ...)
           uint8_t numberOfIndexes;      The total number of indexes (2 or more)
 Returns:  None
 ***************************************/
-bool SigmaDSP::demux(std::string name, uint8_t index, uint8_t numberOfIndexes)
+bool SigmaDSP::mux(QString name, int index)
 {
   auto it = _paramMap.find(name);
-  if( it == _paramMap.end() || it->second.type != SigmaDSP::Param::ParamType::Demux ) {
+  if( it == _paramMap.end() || it->second.type != SigmaDSP::Param::ParamType::Mux ) {
+    return false;
+  }
+  int numberOfIndexes = it->second.qty;
+  if(index < 0 || index >= numberOfIndexes || numberOfIndexes > 5) {
     return false;
   }
   uint16_t startMemoryAddress = it->second.addr;
-  uint8_t i = 0;
-
-  // Load leading zeros
-  for(; i < index; i++)
-    safeload_writeRegister(startMemoryAddress++, 0x00, false);
-
-  // Load index
-  i++;
-  safeload_writeRegister(startMemoryAddress++, 0x01, (i == numberOfIndexes ? true : false));
-
-  // Load tailing zeros
-  for(; i < numberOfIndexes; i++)
-    safeload_writeRegister(startMemoryAddress++, 0x00, (i == numberOfIndexes-1 ? true : false));
+  int32_t arr[5] = {0,0,0,0,0};
+  arr[index] = 0x00800000;
+  switch(numberOfIndexes) {
+    case 2:
+        safeload_write(startMemoryAddress, arr[0], arr[1]);
+        break;
+    case 3:
+        safeload_write(startMemoryAddress,  arr[0], arr[1], arr[2]);
+        break;
+    case 4:
+        safeload_write(startMemoryAddress, arr[0], arr[1], arr[2], arr[3]);
+        break;
+    case 5:
+        safeload_write(startMemoryAddress, arr[0], arr[1], arr[2], arr[3], arr[4] );
+        break;
+  }
   return true;
 }
 
@@ -261,18 +186,18 @@ bool SigmaDSP::demux(std::string name, uint8_t index, uint8_t numberOfIndexes)
 /***************************************
 Function: gain()
 Purpose:  Adjusts the gain of a channel
-Inputs:   std::string name; DSP memory address
+Inputs:   QString name; DSP memory address
           gain;                        Actual gain value (1 = 0dB gain)
           uint8_t channels;            Number of channels this gain cell has (default 1)
 Returns:  None
 ***************************************/
-bool SigmaDSP::gain(std::string name, float gain, uint8_t channels)
+bool SigmaDSP::gain(QString name, int idx, float gain, uint8_t channels)
 {
   auto it = _paramMap.find(name);
   if( it == _paramMap.end() || it->second.type != SigmaDSP::Param::ParamType::Gain ) {
     return false;
   }
-  uint16_t startMemoryAddress = it->second.addr;
+  uint16_t startMemoryAddress = it->second.addr + idx;
   for(uint8_t i = 0; i < channels - 1; i++)
     safeload_writeRegister(startMemoryAddress++, gain, false);
 
@@ -280,13 +205,13 @@ bool SigmaDSP::gain(std::string name, float gain, uint8_t channels)
   return true;
 }
 
-bool SigmaDSP::gain(std::string name, int32_t gain, uint8_t channels)
+bool SigmaDSP::gain(QString name, int idx, int32_t gain, uint8_t channels)
 {
   auto it = _paramMap.find(name);
   if( it == _paramMap.end() || it->second.type != SigmaDSP::Param::ParamType::Gain ) {
     return false;
   }
-  uint16_t startMemoryAddress = it->second.addr;
+  uint16_t startMemoryAddress = it->second.addr + idx;
   int32_t value = (gain * ((int32_t)1 << 23));
 
   for(uint8_t i = 0; i < channels - 1; i++)
@@ -300,12 +225,12 @@ bool SigmaDSP::gain(std::string name, int32_t gain, uint8_t channels)
 /***************************************
 Function: volume_slew()
 Purpose:  Volume control with slew
-Inputs:   std::string name; DSP memory address
+Inputs:   QString name; DSP memory address
           float dB;                    Volume to set in dB
           uint8_t slew;                slew rate (optional, default 12)
 Returns:  None
 ***************************************/
-bool SigmaDSP::volume_slew(std::string name, float dB, uint8_t slew)
+bool SigmaDSP::volume_slew(QString name, float dB, uint8_t slew)
 {
   auto it = _paramMap.find(name);
   if( it == _paramMap.end() || it->second.type != SigmaDSP::Param::ParamType::Volume ) {
@@ -323,11 +248,11 @@ bool SigmaDSP::volume_slew(std::string name, float dB, uint8_t slew)
 /***************************************
 Function: dynamicBass()
 Purpose:  Controls the boost level of the dynamic bass block
-Inputs:   std::string name; DSP memory address
+Inputs:   QString name; DSP memory address
           float dB;                    Bass boost level in dB (0 - +20dB)
 Returns:  None
 ***************************************/
-bool SigmaDSP::dynamicBass(std::string name, float dB)
+bool SigmaDSP::dynamicBass(QString name, float dB)
 {
   auto it = _paramMap.find(name);
   if( it == _paramMap.end() || it->second.type != SigmaDSP::Param::ParamType::DynamicBass ) {
@@ -345,12 +270,12 @@ bool SigmaDSP::dynamicBass(std::string name, float dB)
 Function: hardClip()
 Purpose:  Hard clip with separate negative
           and positive threshold
-Inputs:   std::string name; DSP memory address
+Inputs:   QString name; DSP memory address
           float highThreshold;         High threshold 0 -> 1.0
           float lowThreshold;          Low threshold -1.0 -> 0
 Returns:  None
 ***************************************/
-bool SigmaDSP::hardClip(std::string name, float highThreshold, float lowThreshold)
+bool SigmaDSP::hardClip(QString name, float highThreshold, float lowThreshold)
 {
   auto it = _paramMap.find(name);
   if( it == _paramMap.end() || it->second.type != SigmaDSP::Param::ParamType::HardClip ) {
@@ -366,11 +291,11 @@ bool SigmaDSP::hardClip(std::string name, float highThreshold, float lowThreshol
 Function: softClip()
 Purpose:  Soft clip with adjustable curve.
           Higher alpha -> smoother clipping curve
-Inputs:   std::string name; DSP memory address
+Inputs:   QString name; DSP memory address
           float alpha;                 Clipping coefficient (0.1 -> 10.0)
 Returns:  None
 ***************************************/
-bool SigmaDSP::softClip(std::string name, float alpha)
+bool SigmaDSP::softClip(QString name, float alpha)
 {
   auto it = _paramMap.find(name);
   if( it == _paramMap.end() || it->second.type != SigmaDSP::Param::ParamType::SoftClip ) {
@@ -388,11 +313,11 @@ bool SigmaDSP::softClip(std::string name, float alpha)
 /***************************************
 Function: dcSource()
 Purpose:  This function controls a DC source cell
-Inputs:   std::string name; DSP memory address
+Inputs:   QString name; DSP memory address
           float level;                 DC value level range +/-1.0
 Returns:  None
 ***************************************/
-bool SigmaDSP::dcSource(std::string name, float level)
+bool SigmaDSP::dcSource(QString name, float level)
 {
   auto it = _paramMap.find(name);
   if( it == _paramMap.end() || it->second.type != SigmaDSP::Param::ParamType::DcSource ) {
@@ -408,11 +333,11 @@ bool SigmaDSP::dcSource(std::string name, float level)
 Function: sineSource()
 Purpose:  This function controls a sine source cell
           Use float/double for accuracy, and integer for speed
-Inputs:   std::string name;   DSP memory address
+Inputs:   QString name;   DSP memory address
           frequency;                     Frequency in Hz
 Returns:  None
 ***************************************/
-bool SigmaDSP::sineSource(std::string name, float frequency)
+bool SigmaDSP::sineSource(QString name, float frequency)
 {
   auto it = _paramMap.find(name);
   if( it == _paramMap.end() || it->second.type != SigmaDSP::Param::ParamType::SineSource ) {
@@ -425,7 +350,7 @@ bool SigmaDSP::sineSource(std::string name, float frequency)
   return true;
 }
 
-bool SigmaDSP::sineSource(std::string name, int32_t frequency)
+bool SigmaDSP::sineSource(QString name, int32_t frequency)
 {
   auto it = _paramMap.find(name);
   if( it == _paramMap.end() || it->second.type != SigmaDSP::Param::ParamType::SineSource ) {
@@ -443,23 +368,23 @@ bool SigmaDSP::sineSource(std::string name, int32_t frequency)
 /***************************************
 Function: squareSource()
 Purpose:  This function controls a square source cell
-Inputs:   std::string name;   DSP memory address
+Inputs:   QString name;   DSP memory address
           frequency;                     Frequency in Hz
 Returns:  None
 ***************************************/
-bool SigmaDSP::squareSource(std::string name,    float frequency) { return sineSource(name, frequency); }
-bool SigmaDSP::squareSource(std::string name,  int32_t frequency) { return sineSource(name, frequency); }
+bool SigmaDSP::squareSource(QString name,    float frequency) { return sineSource(name, frequency); }
+bool SigmaDSP::squareSource(QString name,  int32_t frequency) { return sineSource(name, frequency); }
 
 
 /***************************************
 Function: sawtoothSource()
 Purpose:  This function controls a sawtooth source cell
           Use float/double for accuracy, and integer for speed
-Inputs:   std::string name;   DSP memory address
+Inputs:   QString name;   DSP memory address
           frequency;                     Frequency in Hz
 Returns:  None
 ***************************************/
-bool SigmaDSP::sawtoothSource(std::string name, float frequency)
+bool SigmaDSP::sawtoothSource(QString name, float frequency)
 {
   auto it = _paramMap.find(name);
   if( it == _paramMap.end() || it->second.type != SigmaDSP::Param::ParamType::SawtoothSource ) {
@@ -472,7 +397,7 @@ bool SigmaDSP::sawtoothSource(std::string name, float frequency)
   return true;
 }
 
-bool SigmaDSP::sawtoothSource(std::string name, int32_t frequency)
+bool SigmaDSP::sawtoothSource(QString name, int32_t frequency)
 {
   auto it = _paramMap.find(name);
   if( it == _paramMap.end() || it->second.type != SigmaDSP::Param::ParamType::SawtoothSource ) {
@@ -491,11 +416,11 @@ bool SigmaDSP::sawtoothSource(std::string name, int32_t frequency)
 Function: triangleSource()
 Purpose:  This function controls a triangle source cell
           Use float/double for accuracy, and integer for speed
-Inputs:   std::string name;   DSP memory address
+Inputs:   QString name;   DSP memory address
           frequency;                     Frequency in Hz
 Returns:  None
 ***************************************/
-bool SigmaDSP::triangleSource(std::string name, float frequency)
+bool SigmaDSP::triangleSource(QString name, float frequency)
 {
   auto it = _paramMap.find(name);
   if( it == _paramMap.end() || it->second.type != SigmaDSP::Param::ParamType::TriangleSource ) {
@@ -508,7 +433,7 @@ bool SigmaDSP::triangleSource(std::string name, float frequency)
   return true;
 }
 
-bool SigmaDSP::triangleSource(std::string name, int32_t frequency)
+bool SigmaDSP::triangleSource(QString name, int32_t frequency)
 {
   auto it = _paramMap.find(name);
   if( it == _paramMap.end() || it->second.type != SigmaDSP::Param::ParamType::TriangleSource ) {
@@ -526,7 +451,7 @@ bool SigmaDSP::triangleSource(std::string name, int32_t frequency)
 /***************************************
 Function: audioDelay()
 Purpose:  This function controls a delay cell
-Inputs:   std::string name;   DSP memory address
+Inputs:   QString name;   DSP memory address
           float delay_ms;                Delay value
 Returns:  None
 
@@ -544,7 +469,7 @@ for its processing. The SigmaStudio compiler manages the data
 RAM and indicates if the number of addresses needed in the
 design exceeds the maximum available.
 ***************************************/
-bool SigmaDSP::audioDelay(std::string name, float delayMs)
+bool SigmaDSP::audioDelay(QString name, float delayMs)
 {
   auto it = _paramMap.find(name);
   if( it == _paramMap.end() || it->second.type != SigmaDSP::Param::ParamType::Delay ) {
@@ -564,11 +489,11 @@ bool SigmaDSP::audioDelay(std::string name, float delayMs)
 /***************************************
 Function: EQfirstOrder()
 Purpose:  Adjusts a first order EQ
-Inputs:   std::string name;   DSP memory address
+Inputs:   QString name;   DSP memory address
           firstOrderEQ_t &equalizer;     Equalizer param struct
 Returns:  None
 ***************************************/
-bool SigmaDSP::EQfirstOrder(std::string name, firstOrderEQ_t &equalizer)
+bool SigmaDSP::EQfirstOrder(QString name, firstOrderEQ_t &equalizer)
 {
   auto it = _paramMap.find(name);
   if( it == _paramMap.end() || it->second.type != SigmaDSP::Param::ParamType::EqFirstOrder ) {
@@ -630,33 +555,38 @@ bool SigmaDSP::EQfirstOrder(std::string name, firstOrderEQ_t &equalizer)
 /***************************************
 Function: EQsecondOrder()
 Purpose:  Adjusts a second order EQ
-Inputs:   std::string name;   DSP memory address
+Inputs:   QString name;   DSP memory address
           secondOrderEQ_t &equalizer;    Equalizer param struct
 Returns:  None
 ***************************************/
-bool SigmaDSP::EQsecondOrder(std::string name, secondOrderEQ_t &equalizer)
+bool SigmaDSP::EQsecondOrder(QString name, int idx, enum filterType ft, float Q, float S, float bandwidth, float boost, float freq, float gain, bool invert, bool state)
 {
   auto it = _paramMap.find(name);
   if( it == _paramMap.end() || it->second.type != SigmaDSP::Param::ParamType::EqSecondOrder ) {
+    printf("Invalid name: %s", name.toStdString().c_str());
     return false;
   }
-  uint16_t startMemoryAddress = it->second.addr;
+  if(idx < 0 || idx >= it->second.qty) {
+    printf("Index %d out of bounds for: %s", idx, name.toStdString().c_str());
+    return false;
+  }
+  uint16_t startMemoryAddress = it->second.addr + idx*5;
   float A, w0, alpha, gainLinear;
   float b0, b1, b2, a0, a1, a2;
   float coefficients[5];
 
-  A=pow(10,(equalizer.boost/40));           // 10^(boost/40)
-  w0=2*M_PI*equalizer.freq/FS;                // 2*PI*freq/FS
-  gainLinear = pow(10,(equalizer.gain/20)); // 10^(gain/20)
+  A=pow(10,(boost/40));           // 10^(boost/40)
+  w0=2*M_PI*freq/FS;                // 2*PI*freq/FS
+  gainLinear = pow(10,(gain/20)); // 10^(gain/20)
 
-  switch(equalizer.filterType)
+  switch(ft)
   {
 // Parametric
     case parameters::filterType::parametric:
 // Peaking
     case parameters::filterType::peaking:
     default:
-      alpha = sin(w0)/(2*equalizer.Q);
+      alpha = sin(w0)/(2*Q);
       a0 =  1 + alpha/A;
       a1 = -2 * cos(w0);
       a2 =  1 - alpha/A;
@@ -667,7 +597,7 @@ bool SigmaDSP::EQsecondOrder(std::string name, secondOrderEQ_t &equalizer)
 
 // Low shelf
     case parameters::filterType::lowShelf:
-      alpha=sin(w0)/2*sqrt((A+1/A)*(1/equalizer.S-1)+2);
+      alpha=sin(w0)/2*sqrt((A+1/A)*(1/S-1)+2);
       a0 = (A+1)+(A-1)*cos(w0)+2*sqrt(A)*alpha;
       a1 = -2*((A-1)+(A+1)*cos(w0));
       a2 = (A+1)+(A-1)*cos(w0)-2*sqrt(A)*alpha;
@@ -678,7 +608,7 @@ bool SigmaDSP::EQsecondOrder(std::string name, secondOrderEQ_t &equalizer)
 
 // High shelf
     case parameters::filterType::highShelf:
-      alpha = sin(w0)/2 * sqrt((A + 1/A)*(1/equalizer.S - 1) + 2);
+      alpha = sin(w0)/2 * sqrt((A + 1/A)*(1/S - 1) + 2);
       a0 = (A+1) - (A-1)*cos(w0) + 2*sqrt(A)*alpha;
       a1 = 2*((A-1) - (A+1)*cos(w0));
       a2 = (A+1) - (A-1)*cos(w0) - 2*sqrt(A)*alpha;
@@ -689,7 +619,7 @@ bool SigmaDSP::EQsecondOrder(std::string name, secondOrderEQ_t &equalizer)
 
 // Lowpass
     case parameters::filterType::lowpass:
-      alpha = sin(w0)/(2*equalizer.Q);
+      alpha = sin(w0)/(2*Q);
       a0 = 1 + alpha;
       a1 = -2*cos(w0);
       a2 = 1 - alpha;
@@ -700,7 +630,7 @@ bool SigmaDSP::EQsecondOrder(std::string name, secondOrderEQ_t &equalizer)
 
 // Highpass
     case parameters::filterType::highpass:
-      alpha = sin(w0)/(2*equalizer.Q);
+      alpha = sin(w0)/(2*Q);
       a0 = 1 + alpha;
       a1 = -2*cos(w0);
       a2 = 1 - alpha;
@@ -711,7 +641,7 @@ bool SigmaDSP::EQsecondOrder(std::string name, secondOrderEQ_t &equalizer)
 
 // Bandpass
     case parameters::filterType::bandpass:
-      alpha = sin(w0) * sinh(log(2)/(2 * equalizer.bandwidth * w0/sin(w0)));
+      alpha = sin(w0) * sinh(log(2)/(2 * bandwidth * w0/sin(w0)));
       a0 = 1 + alpha;
       a1 = -2*cos(w0);
       a2 = 1 - alpha;
@@ -722,7 +652,7 @@ bool SigmaDSP::EQsecondOrder(std::string name, secondOrderEQ_t &equalizer)
 
 // Bandstop
     case parameters::filterType::bandstop:
-      alpha = sin(w0) * sinh(log(2)/(2 * equalizer.bandwidth * w0/sin(w0)));
+      alpha = sin(w0) * sinh(log(2)/(2 * bandwidth * w0/sin(w0)));
       a0 = 1 + alpha;
       a1 = -2*cos(w0);
       a2 = 1 - alpha;
@@ -778,9 +708,9 @@ bool SigmaDSP::EQsecondOrder(std::string name, secondOrderEQ_t &equalizer)
 
   // For Sigma DSP implementation we need to normalize all the coefficients respect to a0
   // and inverting by sign a1 and a2
-  if(a0 != 0.00 && equalizer.state == parameters::state::on)
+  if(a0 != 0.00 && state)
   {
-    if(equalizer.phase == parameters::phase::nonInverted) // 0 deg
+    if(!invert) // 0 deg
     {
       coefficients[0] = b0/a0;
       coefficients[1] = b1/a0;
@@ -788,7 +718,7 @@ bool SigmaDSP::EQsecondOrder(std::string name, secondOrderEQ_t &equalizer)
       coefficients[3] = -1*a1/a0;
       coefficients[4] = -1*a2/a0;
     }
-    else //if(equalizer.phase == parameters::phase::inverted) // 180 deg
+    else //if(phase == parameters::phase::inverted) // 180 deg
     {
       coefficients[0] = -1*b0/a0;
       coefficients[1] = -1*b1/a0;
@@ -797,7 +727,7 @@ bool SigmaDSP::EQsecondOrder(std::string name, secondOrderEQ_t &equalizer)
       coefficients[4] = -1*a2/a0; // This coefficient does not change sign!
     }
   }
-  else //if(equalizer.state == parameters::state::off)
+  else //if(state == parameters::state::off)
   {
     coefficients[0] = 1.00;
     coefficients[1] = 0;
@@ -814,11 +744,11 @@ bool SigmaDSP::EQsecondOrder(std::string name, secondOrderEQ_t &equalizer)
 /***************************************
 Function: toneControl()
 Purpose:  This function manages a baxandall low-high dual tone control
-Inputs:   std::string name;   DSP memory address
+Inputs:   QString name;   DSP memory address
           toneCtrl_t &toneCtrl;          Tone control param struct
 Returns:  None
 ***************************************/
-bool SigmaDSP::toneControl(std::string name, toneCtrl_t &toneCtrl)
+bool SigmaDSP::toneControl(QString name, toneCtrl_t &toneCtrl)
 {
   auto it = _paramMap.find(name);
   if( it == _paramMap.end() || it->second.type != SigmaDSP::Param::ParamType::ToneControl ) {
@@ -899,7 +829,7 @@ bool SigmaDSP::toneControl(std::string name, toneCtrl_t &toneCtrl)
  * @param frequency - frequency range: 1-19148 Hz
  * @param q - q range: 1.28:10
  */
-bool SigmaDSP::stateVariable(std::string name, float freq, float q)
+bool SigmaDSP::stateVariable(QString name, float freq, float q)
 {
   auto it = _paramMap.find(name);
   if( it == _paramMap.end() || it->second.type != SigmaDSP::Param::ParamType::StateVariable ) {
@@ -918,11 +848,11 @@ bool SigmaDSP::stateVariable(std::string name, float freq, float q)
 Function: CompressorRMS()
 Purpose:  This function calculates the curve and the other parameters of a rms compressor block
           Set ratio = 1 to disable compressor
-Inputs:   std::string name;   DSP memory address
+Inputs:   QString name;   DSP memory address
           compressor_t &compressor;      Compressor param struct
 Returns:  None
 ***************************************/
-bool SigmaDSP::compressorRMS(std::string name, compressor_t &compressor)
+bool SigmaDSP::compressorRMS(QString name, compressor_t &compressor)
 {
   auto it = _paramMap.find(name);
   if( it == _paramMap.end() || it->second.type != SigmaDSP::Param::ParamType::CompressorRMS ) {
@@ -1008,11 +938,11 @@ bool SigmaDSP::compressorRMS(std::string name, compressor_t &compressor)
 Function: CompressorPeak()
 Purpose:  This function calculates the curve and the other parameters of a peak compressor block
           Set ratio = 1 to disable compressor
-Inputs:   std::string name;   DSP memory address
+Inputs:   QString name;   DSP memory address
           compressor_t &compressor;      Compressor param struct
 Returns:  None
 ***************************************/
-bool SigmaDSP::compressorPeak(std::string name, compressor_t &compressor)
+bool SigmaDSP::compressorPeak(QString name, compressor_t &compressor)
 {
   auto it = _paramMap.find(name);
   if( it == _paramMap.end() || it->second.type != SigmaDSP::Param::ParamType::CompressorMax ) {

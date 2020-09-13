@@ -5,12 +5,10 @@
 #include <linux/i2c-dev.h>
 #include <array>
 #include <map>
-#include <string>
+#include <QString>
+#include <QObject>
 #include "parameters.h"
 #include "tinyxml2.h"
-
-// Only ADAU1701 is supported at the moment
-#define ADAU1701 0
 
 // Hardware register constants
 typedef enum
@@ -50,80 +48,104 @@ typedef enum
   AnalogInterfaceRegister0 = 0x0824
 } dspRegister;
 
-class SigmaDSP
+class SigmaDSP: public QObject
 {
+  Q_OBJECT
+
   public:
     // Store passed device type and i2c address to private constants
-    SigmaDSP(uint8_t i2cAddress, uint8_t device, int8_t resetPin = -1);
+    SigmaDSP(int adapter_nr, uint8_t i2cAddress);
 
     // Init and setup
     void begin(int adapter_nr=1);
     void loadXml(const char* filename);
-    void i2cClock(uint32_t clock);
-    void reset();
-    uint8_t ping();
 
     // DSP functions
-    bool mux(std::string name,        uint8_t index,    uint8_t numberOfIndexes = 0);
-    bool demux(std::string name,      uint8_t index,    uint8_t numberOfIndexes);
-    bool gain(std::string name,          float gainVal, uint8_t channels = 1);
-    bool gain(std::string name,        int32_t gainVal, uint8_t channels = 1);
-    bool gain(std::string name,         double gainVal, uint8_t channels = 1) { return gain(name,   (float)gainVal, channels); }
-    bool gain(std::string name,       uint32_t gainVal, uint8_t channels = 1) { return gain(name, (int32_t)gainVal, channels); }
-    bool gain(std::string name,       uint16_t gainVal, uint8_t channels = 1) { return gain(name, (int32_t)gainVal, channels); }
-    bool gain(std::string name,        int16_t gainVal, uint8_t channels = 1) { return gain(name, (int32_t)gainVal, channels); }
-    bool gain(std::string name,        uint8_t gainVal, uint8_t channels = 1) { return gain(name, (int32_t)gainVal, channels); }
-    bool gain(std::string name,         int8_t gainVal, uint8_t channels = 1) { return gain(name, (int32_t)gainVal, channels); }
+    Q_INVOKABLE bool mux(QString name,        int index);
+    Q_INVOKABLE bool demux(QString name,      int index);
+    Q_INVOKABLE bool gain(QString name,       int idx, float gainVal, uint8_t channels = 1);
+    Q_INVOKABLE bool gain(QString name,       int idx, int32_t gainVal, uint8_t channels = 1);
 
-    bool volume_slew(std::string name           , float db,        uint8_t slew = 12);
-    bool dynamicBass(std::string name, float dB);
-    bool hardClip(std::string name,     float highThreshold, float lowThreshold);
-    bool softClip(std::string name,     float alpha);
-    bool dcSource(std::string name,     float level);
+    Q_INVOKABLE bool volume_slew(QString name           , float db,        uint8_t slew = 12);
+    Q_INVOKABLE bool dynamicBass(QString name, float dB);
+    Q_INVOKABLE bool hardClip(QString name,     float highThreshold, float lowThreshold);
+    Q_INVOKABLE bool softClip(QString name,     float alpha);
+    Q_INVOKABLE bool dcSource(QString name,     float level);
 
-    bool sineSource(std::string name,    float frequency);
-    bool sineSource(std::string name,  int32_t frequency);
-    bool sineSource(std::string name,   double frequency) { return sineSource(name,   (float)frequency); }
-    bool sineSource(std::string name, uint32_t frequency) { return sineSource(name, (int32_t)frequency); }
-    bool sineSource(std::string name, uint16_t frequency) { return sineSource(name, (int32_t)frequency); }
-    bool sineSource(std::string name,  int16_t frequency) { return sineSource(name, (int32_t)frequency); }
-    bool sineSource(std::string name,  uint8_t frequency) { return sineSource(name, (int32_t)frequency); }
-    bool sineSource(std::string name,   int8_t frequency) { return sineSource(name, (int32_t)frequency); }
+    Q_INVOKABLE bool sineSource(QString name,    float frequency);
+    Q_INVOKABLE bool sineSource(QString name,  int32_t frequency);
+    Q_INVOKABLE bool sineSource(QString name,   double frequency) { return sineSource(name,   (float)frequency); }
+    Q_INVOKABLE bool sineSource(QString name, uint32_t frequency) { return sineSource(name, (int32_t)frequency); }
+    Q_INVOKABLE bool sineSource(QString name, uint16_t frequency) { return sineSource(name, (int32_t)frequency); }
+    Q_INVOKABLE bool sineSource(QString name,  int16_t frequency) { return sineSource(name, (int32_t)frequency); }
+    Q_INVOKABLE bool sineSource(QString name,  uint8_t frequency) { return sineSource(name, (int32_t)frequency); }
+    Q_INVOKABLE bool sineSource(QString name,   int8_t frequency) { return sineSource(name, (int32_t)frequency); }
 
-    bool squareSource(std::string name,    float frequency);
-    bool squareSource(std::string name,  int32_t frequency);
-    bool squareSource(std::string name,   double frequency) { return sineSource(name,   (float)frequency); }
-    bool squareSource(std::string name, uint32_t frequency) { return sineSource(name, (int32_t)frequency); }
-    bool squareSource(std::string name, uint16_t frequency) { return sineSource(name, (int32_t)frequency); }
-    bool squareSource(std::string name,  int16_t frequency) { return sineSource(name, (int32_t)frequency); }
-    bool squareSource(std::string name,  uint8_t frequency) { return sineSource(name, (int32_t)frequency); }
-    bool squareSource(std::string name,   int8_t frequency) { return sineSource(name, (int32_t)frequency); }
+    Q_INVOKABLE bool squareSource(QString name,    float frequency);
+    Q_INVOKABLE bool squareSource(QString name,  int32_t frequency);
+    Q_INVOKABLE bool squareSource(QString name,   double frequency) { return sineSource(name,   (float)frequency); }
+    Q_INVOKABLE bool squareSource(QString name, uint32_t frequency) { return sineSource(name, (int32_t)frequency); }
+    Q_INVOKABLE bool squareSource(QString name, uint16_t frequency) { return sineSource(name, (int32_t)frequency); }
+    Q_INVOKABLE bool squareSource(QString name,  int16_t frequency) { return sineSource(name, (int32_t)frequency); }
+    Q_INVOKABLE bool squareSource(QString name,  uint8_t frequency) { return sineSource(name, (int32_t)frequency); }
+    Q_INVOKABLE bool squareSource(QString name,   int8_t frequency) { return sineSource(name, (int32_t)frequency); }
 
-    bool sawtoothSource(std::string name,    float frequency);
-    bool sawtoothSource(std::string name,  int32_t frequency);
-    bool sawtoothSource(std::string name,   double frequency) { return sawtoothSource(name,   (float)frequency); }
-    bool sawtoothSource(std::string name, uint32_t frequency) { return sawtoothSource(name, (int32_t)frequency); }
-    bool sawtoothSource(std::string name, uint16_t frequency) { return sawtoothSource(name, (int32_t)frequency); }
-    bool sawtoothSource(std::string name,  int16_t frequency) { return sawtoothSource(name, (int32_t)frequency); }
-    bool sawtoothSource(std::string name,  uint8_t frequency) { return sawtoothSource(name, (int32_t)frequency); }
-    bool sawtoothSource(std::string name,   int8_t frequency) { return sawtoothSource(name, (int32_t)frequency); }
+    Q_INVOKABLE bool sawtoothSource(QString name,    float frequency);
+    Q_INVOKABLE bool sawtoothSource(QString name,  int32_t frequency);
+    Q_INVOKABLE bool sawtoothSource(QString name,   double frequency) { return sawtoothSource(name,   (float)frequency); }
+    Q_INVOKABLE bool sawtoothSource(QString name, uint32_t frequency) { return sawtoothSource(name, (int32_t)frequency); }
+    Q_INVOKABLE bool sawtoothSource(QString name, uint16_t frequency) { return sawtoothSource(name, (int32_t)frequency); }
+    Q_INVOKABLE bool sawtoothSource(QString name,  int16_t frequency) { return sawtoothSource(name, (int32_t)frequency); }
+    Q_INVOKABLE bool sawtoothSource(QString name,  uint8_t frequency) { return sawtoothSource(name, (int32_t)frequency); }
+    Q_INVOKABLE bool sawtoothSource(QString name,   int8_t frequency) { return sawtoothSource(name, (int32_t)frequency); }
 
-    bool triangleSource(std::string name,    float frequency);
-    bool triangleSource(std::string name,  int32_t frequency);
-    bool triangleSource(std::string name,   double frequency) { return triangleSource(name,   (float)frequency); }
-    bool triangleSource(std::string name, uint32_t frequency) { return triangleSource(name, (int32_t)frequency); }
-    bool triangleSource(std::string name, uint16_t frequency) { return triangleSource(name, (int32_t)frequency); }
-    bool triangleSource(std::string name,  int16_t frequency) { return triangleSource(name, (int32_t)frequency); }
-    bool triangleSource(std::string name,  uint8_t frequency) { return triangleSource(name, (int32_t)frequency); }
-    bool triangleSource(std::string name,   int8_t frequency) { return triangleSource(name, (int32_t)frequency); }
+    Q_INVOKABLE bool triangleSource(QString name,    float frequency);
+    Q_INVOKABLE bool triangleSource(QString name,  int32_t frequency);
+    Q_INVOKABLE bool triangleSource(QString name,   double frequency) { return triangleSource(name,   (float)frequency); }
+    Q_INVOKABLE bool triangleSource(QString name, uint32_t frequency) { return triangleSource(name, (int32_t)frequency); }
+    Q_INVOKABLE bool triangleSource(QString name, uint16_t frequency) { return triangleSource(name, (int32_t)frequency); }
+    Q_INVOKABLE bool triangleSource(QString name,  int16_t frequency) { return triangleSource(name, (int32_t)frequency); }
+    Q_INVOKABLE bool triangleSource(QString name,  uint8_t frequency) { return triangleSource(name, (int32_t)frequency); }
+    Q_INVOKABLE bool triangleSource(QString name,   int8_t frequency) { return triangleSource(name, (int32_t)frequency); }
 
-    bool audioDelay(std::string name,     float delayMs);
-    bool EQfirstOrder(std::string name,   firstOrderEQ_t &equalizer);
-    bool EQsecondOrder(std::string name,  secondOrderEQ_t &equalizer);
-    bool toneControl(std::string name,    toneCtrl_t &toneCtrl);
-    bool stateVariable(std::string name,  float freq, float q);
-    bool compressorRMS(std::string name,  compressor_t &compressor);
-    bool compressorPeak(std::string name, compressor_t &compressor);
+    enum filterType {
+        peaking,
+        parametric,
+        lowShelf,
+        highShelf,
+        lowpass,
+        highpass,
+        bandpass,
+        bandstop,
+        butterworthLowpass,
+        butterworthHighpass,
+        besselLowpass,
+        besselHighpass,
+    };
+    Q_ENUM(filterType);
+    enum phase {
+        deg_0       = 0,
+        nonInverted = 0,
+        deg_180     = 1,
+        inverted    = 1,
+    };
+    Q_ENUM(phase);
+
+    Q_INVOKABLE bool audioDelay(QString name,     float delayMs);
+    Q_INVOKABLE bool EQfirstOrder(QString name,   firstOrderEQ_t &equalizer);
+    Q_INVOKABLE bool EQsecondOrder(QString name, int idx, enum filterType ft, float Q, float S, float bandwidth, float boost, float freq, float gain, bool invert, bool );
+    Q_INVOKABLE bool EQlowpass(QString name, int idx, float gain, bool invert, float freq, float Q) { return EQsecondOrder(name, idx, lowpass, Q, 0, 0, 0, freq, gain, invert, true); };
+    Q_INVOKABLE bool EQhighpass(QString name, int idx, float gain, bool invert, float freq, float Q) { return EQsecondOrder(name, idx, highpass, Q, 0, 0, 0, freq, gain, invert, true); };
+    Q_INVOKABLE bool EQlowshelf(QString name, int idx, float gain, bool invert, float freq, float slope) { return EQsecondOrder(name, idx, lowShelf, 0, slope, 0, 0, freq, gain, invert, true); };
+    Q_INVOKABLE bool EQhighshelf(QString name, int idx, float gain, bool invert, float freq, float slope) { return EQsecondOrder(name, idx, highShelf, 0, slope, 0, 0, freq, gain, invert, true); };
+    Q_INVOKABLE bool EQbandstop(QString name, int idx, float gain, bool invert, float freq, float bandwidth) { return EQsecondOrder(name, idx, bandpass, 0, 0, bandwidth, 0, freq, gain, invert, true); };
+    Q_INVOKABLE bool EQbandpass(QString name, int idx, float gain, bool invert, float freq, float bandwidth) { return EQsecondOrder(name, idx,bandstop , 0, 0, bandwidth, 0, freq, gain, invert, true); };
+    Q_INVOKABLE bool EQparametric(QString name, int idx, float gain, bool invert, float freq, float Q, float boost) { return EQsecondOrder(name, idx, parametric, Q, 0, 0, boost, freq, gain, invert, true); }
+    Q_INVOKABLE bool EQoff(QString name, int idx) { return EQsecondOrder(name, idx, parametric, 0, 0, 0, 0, 0, 0, phase::deg_0, false); } 
+    Q_INVOKABLE bool toneControl(QString name,    toneCtrl_t &toneCtrl);
+    Q_INVOKABLE bool stateVariable(QString name,  float freq, float q);
+    Q_INVOKABLE bool compressorRMS(QString name,  compressor_t &compressor);
+    Q_INVOKABLE bool compressorPeak(QString name, compressor_t &compressor);
 
     // Hardware functions
     void muteADC(bool mute);
@@ -184,8 +206,6 @@ class SigmaDSP
     
     // Private constants
     const uint8_t _dspAddress; // Passed device i2c address
-    const uint8_t _deviceType; // Passed device type
-    const int8_t  _resetPin;   // Digital pin to reset the DSP
     
     // Private variables
     uint16_t _dspRegAddr;      // Used by template safeload functions
@@ -205,7 +225,7 @@ class SigmaDSP
         ParamType type;
         int qty;
     };
-    std::map<std::string, SigmaDSP::Param> _paramMap;
+    std::map<QString, SigmaDSP::Param> _paramMap;
 };
 
 

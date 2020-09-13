@@ -1,0 +1,17 @@
+<RCC>
+<qresource prefix="/">
+<file>main.qml</file>
+<file>startup.js</file>
+<file>Menu.qml</file>
+<file>RootMenuModel.qml</file>
+<file>PlaceholderMenuModel.qml</file>
+<file>SourceMenu.qml</file>
+<file>SourceMenuItem.qml</file>
+<file>BluetoothPairMenu.qml</file>
+<file>AudioControl.qml</file>
+<file>BottomBar.qml</file>
+<file>MpdSourceBox.qml</file>
+<file>RadioSourceBox.qml</file>
+<file>AuxSourceBox.qml</file>
+</qresource>
+</RCC>

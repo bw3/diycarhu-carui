@@ -8,6 +8,8 @@
 #include <termios.h>    // POSIX terminal control definitions
 #include <iostream>
 
+#include <thread>
+
 const int MAX_LINE_LENGTH = 100;
 
 void setBaud2(int uart_fd,speed_t speed) {
@@ -40,8 +42,38 @@ void setBaud2(int uart_fd,speed_t speed) {
     }
 }
 
+void Arduino::run() {
+    {
+        const std::lock_guard<std::mutex> lg(writeMutex);
+        uart_fd = open("/dev/ttyAMA1", O_RDWR| O_NOCTTY );
+        setBaud2(uart_fd, B9600);
+        write(uart_fd, " \n", 2);
+    }
+    char current_line[MAX_LINE_LENGTH + 1];
+    int position = 0;
+    while(true) {
+        position += read( uart_fd, current_line + position, 1 );
+        position %= MAX_LINE_LENGTH;
+        if( position == 0 || current_line[position-1] != '\n' ) {
+            continue;
+        }
+        current_line[position-1] = 0x00;
+        position = 0;
+        printf("Arduino: %s\n", current_line);
+        QString str = current_line;
+        emit msg(str);
+    }
+}
+
+void Arduino::sendCmd(QString cmd) {
+    const std::lock_guard<std::mutex> lg(writeMutex);
+    cmd = cmd.append("\n");
+    const char* str = cmd.toStdString().c_str();
+    write(uart_fd, str, cmd.length());   
+}
+
 Arduino::Arduino (QObject *parent ) {
-    int uart_fd = open("/dev/ttyAMA1", O_RDWR| O_NOCTTY );
-    setBaud2(uart_fd, B9600);
-    write(uart_fd, "P100\n",5);
+    auto lambda = [](Arduino* a) {a->run();};
+    std::thread t(lambda, this);
+    m_thread.swap(t);
 }

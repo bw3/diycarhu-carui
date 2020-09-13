@@ -9,6 +9,8 @@
 #include <iostream>
 #include <time.h>
 
+#include <QProcess>
+
 const int MAX_LINE_LENGTH = 100;
 
 void setBaud(int uart_fd,speed_t speed) {
@@ -113,12 +115,12 @@ void cfgPm2(int uart_fd) {
     const uint16_t  minAcqTime = 0; //s
     const uint32_t  extintInactivityMs = 0; //ms
     uint8_t payload[48] = {
-        0x02, //version
+        0x01, //version
         0x00, 
         maxStartupStateDur,
         0x00,
-        0x20, //extintWake
-        0x18,//0x18, //updateEPH, updateRTC
+        0x60, //extintWake
+        0x08,//0x18, //updateEPH, updateRTC
         0x00, //mode
         0x00,
         (uint8_t) (updatePeriod << 0),(uint8_t) (updatePeriod << 8),(uint8_t) (updatePeriod << 16),(uint8_t) (updatePeriod << 24),
@@ -127,10 +129,10 @@ void cfgPm2(int uart_fd) {
         (uint8_t) (onTime << 0),(uint8_t) (onTime << 8),
         (uint8_t) (minAcqTime << 0),(uint8_t) (minAcqTime << 8),
         0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,
-        0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,
-        (uint8_t) (extintInactivityMs << 0),(uint8_t) (extintInactivityMs << 8),(uint8_t) (extintInactivityMs << 16),(uint8_t) (extintInactivityMs << 24)
+        0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00//,
+        //(uint8_t) (extintInactivityMs << 0),(uint8_t) (extintInactivityMs << 8),(uint8_t) (extintInactivityMs << 16),(uint8_t) (extintInactivityMs << 24)
     };
-    sendUBX(uart_fd, 0x06, 0x3B, 48, payload);
+    sendUBX(uart_fd, 0x06, 0x3B, 44, payload);
 }
 
 void cfgTp5(int uart_fd, uint8_t timepulse) {
@@ -298,7 +300,7 @@ void UbloxGps::decodeNMEA(char* str) {
         long  fix_date = strtol(next_field(saveptr), NULL, 10);
         if(!clock_set && fix_date != 0) {
             char date_time_str[30];
-            snprintf(date_time_str,29,"20%02d-%02d-%02d %02d:%02d:%02d\n", 
+            snprintf(date_time_str,29,"20%02d-%02d-%02d %02d:%02d:%02d", 
                 (int)fix_date%100, 
                 (int)fix_date/100%100, 
                 (int)fix_date/100/100%100, 
@@ -307,6 +309,7 @@ void UbloxGps::decodeNMEA(char* str) {
                 (int)(fix_time+0.5)%100
             );
             printf(date_time_str);
+            printf("\n");
             struct tm t;
             t.tm_year = (int)fix_date%100+100;
             t.tm_mon = (int)fix_date/100%100-1;
@@ -318,7 +321,12 @@ void UbloxGps::decodeNMEA(char* str) {
             struct timespec epoch_spec;
             epoch_spec.tv_sec = timegm(&t);
             printf("Epoch: %ld", epoch_spec.tv_sec);
-            clock_settime(CLOCK_REALTIME,&epoch_spec);
+            //            clock_settime(CLOCK_REALTIME,&epoch_spec);
+            QString program = "/bin/date";
+            QStringList arguments;
+            arguments << "-s" << date_time_str;
+            QProcess *myProcess = new QProcess(this);
+            myProcess->start(program, arguments);
             clock_set = true;
         }
         if(active) {
