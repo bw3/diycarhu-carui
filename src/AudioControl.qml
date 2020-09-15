@@ -16,11 +16,15 @@ QtObject {
         Dsp.audioDelay("Sub_Delay", 0.1);
     }
     function incVolume() {
-        volume+= 1;
+        if(!mute) {
+            volume+= 1;
+        }
         Dsp.volume_slew("Master_Volume", volume);
     }
     function decVolume() {
-        volume-= 1;
+        if(!mute || volume > -30) {
+            volume-= 1;
+        }
         Dsp.volume_slew("Master_Volume", volume);
     }
     function nextTrack() {
