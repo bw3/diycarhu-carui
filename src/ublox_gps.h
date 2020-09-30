@@ -21,6 +21,7 @@ signals:
     void positionChanged();
 private:
     void decodeNMEA(char* str);
+    void decodeHNR(char* str);
 
     int uart_fd;
     bool clock_set;

@@ -88,7 +88,7 @@ void cfgPrt(int uart_fd, uint32_t baud_rate) {
         (uint8_t) (baud_rate >> 24),
         0x07,
         0x00,
-        0x03,
+        0x01,
         0x00,
         0x00,
         0x00,
@@ -238,6 +238,14 @@ void configNMEA(int uart_fd) {
     sendUBX(uart_fd, 0x06, 0x1, 3, RMC_RATE);
 }
 
+void configUBX(int uart_fd) {
+    cfgRate(uart_fd,1000,1,1);
+    const uint8_t HNR_RATE[4] = {10, 0, 0, 0};
+    sendUBX(uart_fd, 0x06, 0x5C, 4, HNR_RATE);
+    const uint8_t PVT_RATE[3] = {0x28, 0x00, 10};
+    sendUBX(uart_fd, 0x06, 0x1, 3, PVT_RATE);
+}
+
 void UbloxGps::runRecv() {
     char current_line[MAX_LINE_LENGTH + 1];
     int position = 0;
@@ -248,29 +256,52 @@ void UbloxGps::runRecv() {
             position = 0;
             continue;
         }
-        if( position > 7  && current_line[0] == 0xB5) {
-            for(int i=0;i<position;i++)
-                printf("%x ",current_line[i]);
-            printf("\n");
+        if( current_line[0] == 0xB5 ) {
+            if( position < 8 ) {
+                continue;
+            }
+            if(current_line[1] != 0x62) {
+                position = 0;
+                continue;
+            }
+            uint16_t length = (current_line[5] << 8) | current_line[4];
+            if( position < (length + 8) ) {
+                continue;
+            }
+            uint8_t ck_a=0, ck_b=0;
+            for(int i=2;i<length+6;i++) {
+                ck_a += current_line[i];
+                ck_b += ck_a;
+            }
+            if( ck_a != current_line[length+6] || ck_b != current_line[length+7] ) {
+                position = 0;
+                continue;
+            }
+            //for(int i=0;i<position;i++)
+            //    printf("%x ",current_line[i]);
+            //printf("\n");
+            if( current_line[2] == 0x28 && current_line[3] == 00 && length >= 72 ) {
+                decodeHNR(current_line + 6);
+            }
             position = 0;
-            continue;
+        } else {
+            if( position <3 || current_line[position-3] != '*') {
+                continue;
+            }
+            current_line[position] = 0;
+            uint8_t stated_checksum = strtol( current_line + position - 2, NULL, 16);
+            uint8_t calc_checksum = 0;
+            for(int i=1; i< position-3 ; i++) {
+                calc_checksum ^= current_line[i];
+            }
+            if(stated_checksum != calc_checksum) {
+                position = 0;
+                continue;
+            }
+            current_line[position-3] = 0;
+            decodeNMEA( current_line + 1 );
+            position=0;
         }
-        if( position <3 || current_line[position-3] != '*') {
-            continue;
-        }
-        current_line[position] = 0;
-        uint8_t stated_checksum = strtol( current_line + position - 2, NULL, 16);
-        uint8_t calc_checksum = 0;
-        for(int i=1; i< position-3 ; i++) {
-            calc_checksum ^= current_line[i];
-        }
-        if(stated_checksum != calc_checksum) {
-            position = 0;
-            continue;
-        }
-        current_line[position-3] = 0;
-        decodeNMEA( current_line + 1 );
-        position=0;
     }
 }
 
@@ -288,7 +319,7 @@ void UbloxGps::decodeNMEA(char* str) {
     char** saveptr = &str;
     char* msgtype = next_field(saveptr);
     if(strstr(msgtype, "RMC")) {
-    //    printf("RMC\n");
+        printf("RMC\n");
         double fix_time = strtod(next_field(saveptr), NULL);
         bool active = next_field(saveptr)[0] == 'A';
         char* latitude_raw = next_field(saveptr);
@@ -345,33 +376,82 @@ void UbloxGps::decodeNMEA(char* str) {
             }
         }
     } else {
-      //  printf(msgtype);
-        //printf("\n");
+        printf(msgtype);
+        printf("\n");
     }
 }
 
+uint32_t decode_u32(char* str, size_t idx) { 
+    return (str[idx + 3] << 24) | (str[idx + 2] << 16) | (str[idx+1] << 8) | str[idx];
+}
+
+uint16_t decode_u16(char* str, size_t idx) {
+    return (str[idx+1] << 8) | str[idx];
+}
+
+int32_t decode_i32(char* str, size_t idx) {
+    return (str[idx + 3] << 24) | (str[idx + 2] << 16) | (str[idx+1] << 8) | str[idx];
+}
+
+int16_t decode_i16(char* str, size_t idx) {
+    return (str[idx+1] << 8) | str[idx];
+}
+
+void UbloxGps::decodeHNR(char* str) {
+    const double E7 = 10000000;
+    const double E5 = 100000;
+    const double E3 = 1000;
+    uint32_t i_tow              = decode_u32(str,0);
+    uint16_t year               = decode_u16(str,4);
+    uint8_t month               = str[6];
+    uint8_t day                 = str[7];
+    uint8_t hour                = str[8];
+    uint8_t min                 = str[9];
+    uint8_t sec                 = str[10];
+    bool valid_time             = (str[11] & 0x07) == 0x07;
+    uint32_t nano               = decode_u32(str,16);
+    uint8_t fix_type            = str[16];
+    bool vehicle_heading_valid  = (str[17] & 0x10) == 0x10;
+    double longitude            = decode_i32(str,20) / E7;
+    double latitude             = decode_i32(str,24) / E7;
+    double height               = decode_i32(str,28) / E3;
+    double height_msl           = decode_i32(str,32) / E3;
+    double g_speed              = decode_i32(str,36) / E3;
+    double speed                = decode_i32(str,40) / E3;
+    double heading_motion       = decode_i32(str,44) / E5;
+    double heading_vehicle      = decode_i32(str,48) / E5;
+    double horizontal_accuracy  = decode_u32(str,52) / E3;
+    double vertical_accuracy    = decode_u32(str,56) / E3;
+    double speed_accuracy       = decode_u32(str,60) / E3;
+    double heading_accuracy     = decode_u32(str,64) / E5;
+    if(!clock_set && valid_time) {
+        char date_time_str[30];
+        snprintf(date_time_str,29,"%04d-%02d-%02d %02d:%02d:%02d", year, month, day, hour, min, sec);
+        printf(date_time_str);
+        printf("\n");
+        QString program = "/bin/date";
+        QStringList arguments;
+        arguments << "-s" << date_time_str;
+        QProcess *myProcess = new QProcess(this);
+        myProcess->startDetached(program, arguments);
+        clock_set = true;
+    }
+    if(fix_type > 0) {
+        setPosition(latitude,longitude);
+        setBearing(heading_vehicle);
+    }
+
+}
+
 void UbloxGps::runSetup() {
-    printf("open\n");
     uart_fd = open("/dev/ttyAMA2", O_RDWR| O_NOCTTY );
-    printf("setBaud\n");
     setBaud(uart_fd, B9600);
-    cfgReset(uart_fd);
-    printf("cfgPrt\n");
     cfgPrt(uart_fd, 115200);
-    printf("setBaud\n");
     setBaud(uart_fd, B115200);
     auto lambda = [](UbloxGps* g) {g->runRecv();};
     std::thread t(lambda, this);
     std::this_thread::sleep_for(std::chrono::milliseconds(2100));
-    configNMEA(uart_fd);
-    cfgPm2(uart_fd);
-    cfgTp5(uart_fd,0);
-    cfgTp5(uart_fd,1);
-//    cfgPms(uart_fd);
-    cfgAnt(uart_fd);
-    cfgRxm(uart_fd);
-    cfgSave(uart_fd);
-//    rxmPmreq(uart_fd);
+    configUBX(uart_fd);
     t.join();
 }
 
