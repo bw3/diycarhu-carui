@@ -14,21 +14,33 @@ ListModel {
         }
     }
     ListElement {
-        name: "Test Menu"
+        name: "PlayAllRandom"
         action: function action() {
-            stack.push('Menu.qml');
+            Mpd.play_all_random();
         }
     }
     ListElement {
-        name: "Test Menu"
+        name: "Speakers5"
         action: function action() {
-            stack.push('Menu.qml');
+            audioControl.speakers5();
         }
     }
     ListElement {
-        name: "Test Menu"
+        name: "Speakers6"
         action: function action() {
-            stack.push('Menu.qml');
+            audioControl.speakers6();
+        }
+    }
+    ListElement {
+        name: "Speakers8"
+        action: function action() {
+            audioControl.speakers8();
+        }
+    }
+    ListElement {
+        name: "Bass Boost"
+        action: function action() {
+            stack.push('BassBoostMenu.qml');
         }
     }
     ListElement {

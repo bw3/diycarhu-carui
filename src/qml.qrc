@@ -13,5 +13,6 @@
 <file>MpdSourceBox.qml</file>
 <file>RadioSourceBox.qml</file>
 <file>AuxSourceBox.qml</file>
+<file>BassBoostMenu.qml</file>
 </qresource>
 </RCC>

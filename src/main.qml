@@ -1,7 +1,7 @@
 import QtQuick 2.0
 import QtQuick.Window 2.0
 import QtQuick.Controls 2.0
-import QtLocation 5.6
+import QtLocation 5.12
 import QtPositioning 5.6
 
 import "startup.js" as Startup
@@ -19,7 +19,7 @@ Component.onCompleted: {
 Plugin {
 id: mapboxglPlugin
 name: "mapboxgl"
-PluginParameter { name: "mapboxgl.mapping.additional_style_urls"; value: "http://localhost:8553/v1/mbgl/style?style=mc-car-en" }
+PluginParameter { name: "mapboxgl.mapping.additional_style_urls"; value: "http://localhost:8553/v1/mbgl/style?style=osmbright-car-en" }
 PluginParameter { name: "mapboxgl.mapping.cache.size"; value: "0" }
 }
 
@@ -61,10 +61,18 @@ Map {
     anchors.top: nav_box.bottom
     anchors.bottom: bottom_bar.top
     plugin: mapboxglPlugin
-    center: Gps.position.atDistanceAndAzimuth(500,Gps.bearing) //ps.position //QtPositioning.coordinate(43.162, -77.574) // Oslo
+    center: Gps.position.atDistanceAndAzimuth(62,Gps.bearing) 
     tilt: 45
     bearing: Gps.bearing
-    zoomLevel: 14
+    zoomLevel: 17
+    MapPolyline {
+        line.width: 3
+        line.color: 'green'
+        path: [
+            Gps.position ,
+            Gps.position.atDistanceAndAzimuth(-125,Gps.bearing) 
+        ]
+    }
 }
 
 Rectangle {
@@ -185,18 +193,32 @@ Connections {
             case "B3U":
                 audioControl.prevTrack();
                 break;
-            case "L0":
-                Arduino.sendCmd("P100");
-                break;
-            case "L1":
-                Arduino.sendCmd("P250");
-                break;
             case "V1":
                 audioControl.power = true;
                 break;
             case "V0":
                 audioControl.power = false;
+                Arduino.sendCmd("P0");
                 break;
+            default:
+                if(event.startsWith("L")) {
+                    var brightness;
+                    if(event.length == 1) {
+                        brightness = 255;
+                    } else {
+                        var val = parseInt(event.substr(1));
+                        if(val > 98) {
+                            val = 255;
+                        } else {
+                            val = Math.round((val-7)*0.6+3);
+                        }
+                        console.log(val+"\n");
+                        brightness = val;
+                    }
+                    if(audioControl.power) {
+                        Arduino.sendCmd("P" + brightness.toString());
+                    }
+               }
         }
     }
 }
