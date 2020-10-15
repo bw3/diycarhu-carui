@@ -136,8 +136,8 @@ class SigmaDSP: public QObject
     Q_INVOKABLE bool EQsecondOrder(QString name, int idx, enum filterType ft, float Q, float S, float bandwidth, float boost, float freq, float gain, bool invert, bool );
     Q_INVOKABLE bool EQlowpass(QString name, int idx, float gain, bool invert, float freq, float Q) { return EQsecondOrder(name, idx, lowpass, Q, 0, 0, 0, freq, gain, invert, true); };
     Q_INVOKABLE bool EQhighpass(QString name, int idx, float gain, bool invert, float freq, float Q) { return EQsecondOrder(name, idx, highpass, Q, 0, 0, 0, freq, gain, invert, true); };
-    Q_INVOKABLE bool EQlowshelf(QString name, int idx, float gain, bool invert, float freq, float slope) { return EQsecondOrder(name, idx, lowShelf, 0, slope, 0, 0, freq, gain, invert, true); };
-    Q_INVOKABLE bool EQhighshelf(QString name, int idx, float gain, bool invert, float freq, float slope) { return EQsecondOrder(name, idx, highShelf, 0, slope, 0, 0, freq, gain, invert, true); };
+    Q_INVOKABLE bool EQlowshelf(QString name, int idx, float gain, bool invert, float freq, float slope, float boost) { return EQsecondOrder(name, idx, lowShelf, 0, slope, 0, boost, freq, gain, invert, true); };
+    Q_INVOKABLE bool EQhighshelf(QString name, int idx, float gain, bool invert, float freq, float slope, float boost) { return EQsecondOrder(name, idx, highShelf, 0, slope, 0, boost, freq, gain, invert, true); };
     Q_INVOKABLE bool EQbandstop(QString name, int idx, float gain, bool invert, float freq, float bandwidth) { return EQsecondOrder(name, idx, bandpass, 0, 0, bandwidth, 0, freq, gain, invert, true); };
     Q_INVOKABLE bool EQbandpass(QString name, int idx, float gain, bool invert, float freq, float bandwidth) { return EQsecondOrder(name, idx,bandstop , 0, 0, bandwidth, 0, freq, gain, invert, true); };
     Q_INVOKABLE bool EQparametric(QString name, int idx, float gain, bool invert, float freq, float Q, float boost) { return EQsecondOrder(name, idx, parametric, Q, 0, 0, boost, freq, gain, invert, true); }
