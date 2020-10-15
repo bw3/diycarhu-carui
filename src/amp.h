@@ -20,7 +20,7 @@ public:
     Q_INVOKABLE void mute();
     Q_INVOKABLE void hi_z();
     Q_INVOKABLE void line_outputs(QList<int> list);
-
+    Q_INVOKABLE void disable_outputs(QList<int> list);
 signals:
 protected:
 
@@ -30,7 +30,7 @@ private:
 
     std::vector<int> i2c_fd;
     std::vector<uint8_t> i2c_addr;
-    std::vector<uint8_t> line_state;
+    std::vector<uint8_t> play_value;
     std::thread m_thread;
     std::condition_variable m_cmd_condition;
     std::mutex m_cmd_mutex;

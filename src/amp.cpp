@@ -20,6 +20,7 @@ Amp::Amp (int i2c_adptr, uint8_t i2c_addr) {
 }
 
 Amp::Amp (int i2c_adptr, std::vector<uint8_t> i2c_addr) {
+    play_value = { 0x00, 0x00 };
     m_cmd_mutex.lock();
     std::thread t(&Amp::run, this, i2c_adptr, i2c_addr);
     m_thread.swap(t);
@@ -38,7 +39,7 @@ void Amp::run(int i2c_adptr, std::vector<uint8_t> i2c_addr) {
             exit(1);
         }
         uint16_t bytesSent = 0;
-        std::vector<uint8_t> writeData = {0x00, 0x00, 0x31, 0x52, 0x44, 0x55,0xCF, 0xCF, 0xCF, 0xCF, 0x02};
+        std::vector<uint8_t> writeData = {0x00, 0x00, 0x31, 0x52, 0x44, 0x55,0xCF, 0xCF, 0xCF, 0xCF, 0x01};
         write(_i2c_fd, writeData.data(), writeData.size());
         i2c_fd.push_back(_i2c_fd);
     }
@@ -48,7 +49,7 @@ void Amp::run(int i2c_adptr, std::vector<uint8_t> i2c_addr) {
 void Amp::play() {
     std::lock_guard l(m_cmd_mutex);
     for(size_t i=0;i<i2c_fd.size();i++) {
-        std::vector<uint8_t> writeData = {0x04, 0x00};
+        std::vector<uint8_t> writeData = {0x04, play_value[i]};
         write(i2c_fd[i], writeData.data(), writeData.size());
     }
 }
@@ -93,4 +94,26 @@ void Amp::line_outputs(QList<int> list) {
         write(i2c_fd[i], writeData.data(), writeData.size());
     }
 
+}
+
+void Amp::disable_outputs(QList<int> list) {
+    std::set<int> lineSet;
+    for(int i=0;i<list.length();i++) {
+        lineSet.insert(list[i]);
+    }
+    for(size_t i=0;i<i2c_fd.size();i++) {
+        play_value[i] = 0x00;
+        if( lineSet.count(i*4) == 1 ) {
+            play_value[i] |= 0x40;
+        }
+        if( lineSet.count(i*4 + 1) == 1) {
+            play_value[i] |= 0x10;
+        }
+        if( lineSet.count(i*4 + 2) == 1) {
+            play_value[i] |= 0x04;
+        }
+        if( lineSet.count(i*4 + 3) == 1) {
+            play_value[i] |= 0x01;
+        }
+    }
 }
