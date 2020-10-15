@@ -431,7 +431,7 @@ void UbloxGps::decodeHNR(char* str) {
         printf("\n");
         QString program = "/bin/date";
         QStringList arguments;
-        arguments << "-s" << date_time_str;
+        arguments << "-u" << "-s" << date_time_str;
         QProcess *myProcess = new QProcess(this);
         myProcess->startDetached(program, arguments);
         clock_set = true;
@@ -440,7 +440,27 @@ void UbloxGps::decodeHNR(char* str) {
         setPosition(latitude,longitude);
         setBearing(heading_vehicle);
     }
+    m_fix_type = fix_type;
+    emit hnr_signal();
+}
 
+QString UbloxGps::fix_type_desc() {
+    switch(m_fix_type) {
+        case 0x00:
+            return "No Fix";
+        case 0x01:
+            return "DR";
+        case 0x02:
+            return "2D GPS";
+        case 0x03:
+            return "3D GPS";
+        case 0x04:
+            return "GPS DR";
+        case 0x05:
+            return "Time";
+        default:
+            return "????";
+    }
 }
 
 void UbloxGps::runSetup() {
