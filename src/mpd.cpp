@@ -4,7 +4,6 @@
 #include <chrono>
 
 Mpd::Mpd (QObject *parent) {
-    m_cmd = NONE;
     std::thread t(&Mpd::run, this);
     m_thread.swap(t);
 }
@@ -25,7 +24,7 @@ void Mpd::run() {
     while(true) {
         {
             std::unique_lock<std::mutex> l(m_cmd_mutex);
-            if(m_cmd == NONE) {
+            if(m_cmd_queue.empty()) {
                 using namespace std::chrono;
                 m_cmd_condition.wait_for(l, 500ms);
             }
@@ -60,7 +59,12 @@ void Mpd::do_cmd() {
     enum cmd c;
     {
         std::lock_guard l(m_cmd_mutex);
-        c = m_cmd;
+        if( m_cmd_queue.empty()) {
+            c = NONE;
+        } else {
+            c = m_cmd_queue.front();
+            m_cmd_queue.pop();
+        }
     }
     switch(c) {
         case NEXT:
@@ -78,39 +82,49 @@ void Mpd::do_cmd() {
         case TOGGLE_PAUSE:
             mpd_run_toggle_pause(m_conn);
             break;
+        case PLAY_ALL_RANDOM:
+            mpd_run_add(m_conn, "/");
+            mpd_run_random(m_conn, true);
+            mpd_run_repeat(m_conn, true);
+            mpd_run_play_pos(m_conn,0);
+            break;
         case NONE:
             break;
     }
-    m_cmd = NONE;
 }
 
 void Mpd::next() {
     std::lock_guard l(m_cmd_mutex);
-    m_cmd = NEXT;
+    m_cmd_queue.push(NEXT);
     m_cmd_condition.notify_one();
 }
 
 void Mpd::prev() {
     std::lock_guard l(m_cmd_mutex);
-    m_cmd = PREV;
+    m_cmd_queue.push(PREV);
     m_cmd_condition.notify_one();
 }
 
 void Mpd::resume() {
     std::lock_guard l(m_cmd_mutex);
-    m_cmd = RESUME;
+    m_cmd_queue.push(RESUME);
     m_cmd_condition.notify_one();
 }
 
 void Mpd::pause() {
     std::lock_guard l(m_cmd_mutex);
-    m_cmd = PAUSE;
+    m_cmd_queue.push(PAUSE);
     m_cmd_condition.notify_one();
 }
 
 void Mpd::toggle_pause() {
     std::lock_guard l(m_cmd_mutex);
-    m_cmd = TOGGLE_PAUSE;
+    m_cmd_queue.push(TOGGLE_PAUSE);
     m_cmd_condition.notify_one();
 }
 
+void Mpd::play_all_random() {
+    std::lock_guard l(m_cmd_mutex);
+    m_cmd_queue.push(PLAY_ALL_RANDOM);
+    m_cmd_condition.notify_one();
+}

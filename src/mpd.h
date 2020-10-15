@@ -4,6 +4,7 @@
 #include <QObject>
 #include <QString>
 
+#include <queue>
 #include <thread>
 #include <mutex>
 #include <condition_variable>
@@ -25,6 +26,7 @@ public:
     Q_INVOKABLE void resume();
     Q_INVOKABLE void pause();
     Q_INVOKABLE void toggle_pause();
+    Q_INVOKABLE void play_all_random();
 
     QString title() { return m_title; }
     QString artist() { return m_artist; }
@@ -36,8 +38,8 @@ private:
     std::thread m_thread;
     std::condition_variable m_cmd_condition;
     std::mutex m_cmd_mutex;
-    enum cmd { NONE, NEXT, PREV, RESUME, PAUSE, TOGGLE_PAUSE};
-    cmd m_cmd;
+    enum cmd { NONE, NEXT, PREV, RESUME, PAUSE, TOGGLE_PAUSE, PLAY_ALL_RANDOM};
+    std::queue<cmd> m_cmd_queue;
 
     QString m_artist;
     QString m_title;
