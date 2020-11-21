@@ -1,4 +1,4 @@
-import QtQuick 2.0
+import QtQuick 2.6
 import QtQuick.Window 2.0
 import QtQuick.Controls 2.0
 import QtLocation 5.12
@@ -19,7 +19,7 @@ Component.onCompleted: {
 Plugin {
 id: mapboxglPlugin
 name: "mapboxgl"
-PluginParameter { name: "mapboxgl.mapping.additional_style_urls"; value: "http://localhost:8553/v1/mbgl/style?style=osmbright-car-en" }
+PluginParameter { name: "mapboxgl.mapping.additional_style_urls"; value: "http://localhost:8553/v1/mbgl/style?style=mc-car-en" }
 PluginParameter { name: "mapboxgl.mapping.cache.size"; value: "0" }
 }
 
@@ -28,13 +28,21 @@ Rectangle {
     anchors.fill: parent
 }
 
-Rectangle {
+//Rectangle {
+//    id: nav_box
+//    height: 70
+//    color: "green"
+//    anchors.left: parent.left
+//    anchors.right: parent.horizontalCenter
+//}
+
+NavBox {
     id: nav_box
     height: 70
-    color: "green"
     anchors.left: parent.left
     anchors.right: parent.horizontalCenter
 }
+
 
 StackView {
     id: source_box
@@ -61,18 +69,29 @@ Map {
     anchors.top: nav_box.bottom
     anchors.bottom: bottom_bar.top
     plugin: mapboxglPlugin
-    center: Gps.position.atDistanceAndAzimuth(62,Gps.bearing) 
+    center: Gps.position.atDistanceAndAzimuth(100,Gps.bearing) 
     tilt: 45
     bearing: Gps.bearing
     zoomLevel: 17
     MapPolyline {
         line.width: 3
-        line.color: 'green'
+        line.color: 'white'
         path: [
-            Gps.position ,
-            Gps.position.atDistanceAndAzimuth(-125,Gps.bearing) 
+            Gps.position.atDistanceAndAzimuth(25,Gps.bearing-145),
+            Gps.position,
+            Gps.position.atDistanceAndAzimuth(25,Gps.bearing+145) 
         ]
     }
+    MapPolyline {
+        id: debugPolyline
+        line.color: 'purple'
+        line.width: 10
+        path: []
+    }
+}
+
+NavRoute {
+    id: navRoute
 }
 
 Rectangle {
@@ -225,6 +244,26 @@ Connections {
 
 AudioControl {
     id: audioControl
+}
+
+Shortcut {
+    sequence: "F1"
+    onActivated: Gps.dummyRotate(-5)
+}
+
+Shortcut {
+    sequence: "F2"
+    onActivated: Gps.dummyMove(10)
+}
+
+Shortcut {
+    sequence: "F3"
+    onActivated: Gps.dummyRotate(5)
+}
+
+Shortcut {
+    sequence: "F4"
+    onActivated: Gps.dummyMove(-5)
 }
 
 }

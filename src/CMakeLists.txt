@@ -1,7 +1,7 @@
 #include_directories(${Qt5Widgets_INCLUDE_DIRS} ${QtQml_INCLUDE_DIRS} ${Qt5Widgets_INCLUDE_DIRS} ${Qt5Positioning_INCLUDE_DIRS})
 #add_definitions(${Qt5Widgets_DEFINITIONS} ${QtQml_DEFINITIONS} ${Qt5Quick_DEFINITIONS} ${Qt5Positioning_DEFINITIONS})
 find_package(Qt5 COMPONENTS Widgets Qml Quick Location REQUIRED)
-qt5_add_resources(QT_RESOURCES qml.qrc)
+qt5_add_resources(QT_RESOURCES qml.qrc nav_icons.qrc)
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${Qt5Widgets_EXECUTABLE_COMPILE_FLAGS}")
 set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTORCC ON)

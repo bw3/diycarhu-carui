@@ -20,6 +20,12 @@ ListModel {
         }
     }
     ListElement {
+        name: "Set Destination"
+        action: function action() {
+            stack.push('NavMenu.qml');
+        }
+    }
+    ListElement {
         name: "Speakers5"
         action: function action() {
             audioControl.speakers5();
@@ -44,9 +50,10 @@ ListModel {
         }
     }
     ListElement {
-        name: "Test Menu"
+        name: "Navigate Home"
         action: function action() {
-            stack.push('Menu.qml');
+ //            navRoute.setDestination(43.192626, -77.548790);
+           navRoute.setDestination(44.942348,-73.475458);
         }
     }
     ListElement {

@@ -14,5 +14,11 @@
 <file>RadioSourceBox.qml</file>
 <file>AuxSourceBox.qml</file>
 <file>BassBoostMenu.qml</file>
+<file>NavMenu.qml</file>
+<file>NavRoute.qml</file>
+<file>NavBox.qml</file>
+<file>js/jquery-3.5.1.js</file>
+<file>js/polyline.js</file>
+<file>js/kdTree.js</file>
 </qresource>
 </RCC>

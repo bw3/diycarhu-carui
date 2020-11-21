@@ -11,15 +11,14 @@
 
 class DummyGps : public Gps
 {
+    Q_OBJECT
 public:
     explicit DummyGps (QObject *parent = nullptr);
 
-    QGeoCoordinate position();
-    double bearing();
-    void setBearing(double b);
+    Q_INVOKABLE void dummyMove(double meters);
+    Q_INVOKABLE void dummyRotate(double degrees);
 
 signals:
-    void positionChanged();
 protected:
     std::thread m_update_thread;
 };
