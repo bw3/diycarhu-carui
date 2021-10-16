@@ -3,7 +3,7 @@ import QtQuick 2.0
 Item {
     Timer {
         interval: 500; running: true; repeat: true
-        onTriggered: time.text = "                                        " + (new Date()).getHours() + ":" + (new Date()).getMinutes().toString().padStart(2,"0")
+        onTriggered: updateRight()
     }
     Text {
         text: "Volume: "+ (audioControl.mute ? "MUTE" : audioControl.volume + " dB") + "  " + Gps.fix_type_desc
@@ -15,5 +15,16 @@ Item {
         id: time
         font.pointSize: 16
         color: "white"
+    }
+
+    function updateRight() {
+        const date = new Date();
+        let text = date.getHours() + ":" + date.getMinutes().toString().padStart(2,"0");
+        if( navRoute.timeLegSec > 30 ) {
+            const dateArrival = new Date(date.getTime() + navRoute.timeLegSec*1000);
+            text += " (" +navRoute.distanceLegStr + " " + navRoute.timeLegStr + ") ";
+            text += dateArrival.getHours() + ":" + dateArrival.getMinutes().toString().padStart(2,"0");
+        }
+        onTriggered: time.text = "                                        " + text;
     }
 }

@@ -13,6 +13,9 @@ QtObject {
     onValhallaRouteRespChanged: display_route()
     property var gpsPos: Gps.position
     onGpsPosChanged: update()
+    property var distanceLegStr: ""
+    property var timeLegStr: ""
+    property var timeLegSec: 0
 
     function setDestination(lat,lon) {
         waypoints = [QtPositioning.coordinate(lat, lon)]
@@ -186,6 +189,21 @@ QtObject {
             const dist_meters = valhallaRouteResp["trip"]["legs"][legIdx]["maneuvers"][maneuverIdx]["length"]*1000 - maneuverDist - distanceAlongLineSegment(curCoordVal, nextCoordVal, Gps.position); 
             console.log(coordIdx + "  " + legIdx + "    " + maneuverIdx + "  " + maneuverDist + "   " + distanceAlongLineSegment(curCoordVal, nextCoordVal, Gps.position));
             nav_box.distance = metersToString(dist_meters);
+            {
+                let dist_meters_leg = dist_meters;
+                for(let i=maneuverIdx+1;i<valhallaRouteResp["trip"]["legs"][legIdx]["maneuvers"].length;i++) {
+                    dist_meters_leg += valhallaRouteResp["trip"]["legs"][legIdx]["maneuvers"][i]["length"]*1000;
+                }
+                distanceLegStr = metersToString(dist_meters_leg);
+            }
+            {
+                let time = valhallaRouteResp["trip"]["legs"][legIdx]["maneuvers"][maneuverIdx]["time"] * Math.min(1,dist_meters/valhallaRouteResp["trip"]["legs"][legIdx]["maneuvers"][maneuverIdx]["length"]/1000);
+                for(let i=maneuverIdx+1;i<valhallaRouteResp["trip"]["legs"][legIdx]["maneuvers"].length;i++) {
+                    time += valhallaRouteResp["trip"]["legs"][legIdx]["maneuvers"][i]["time"];
+                }
+                timeLegSec = time;
+                timeLegStr = Math.round(time/60) + " min";
+            }
         }
         if(maneuverIdx + 1 == valhallaRouteResp["trip"]["legs"][legIdx]["maneuvers"].length) {
             nav_box.icon = "arrive";
@@ -194,7 +212,7 @@ QtObject {
             nav_box.line2 = "";
         } else {
             const banner_maneuver = valhallaRouteResp["trip"]["legs"][legIdx]["maneuvers"][maneuverIdx+1];
-            console.log(JSON.stringify(banner_maneuver));
+            //console.log(JSON.stringify(banner_maneuver));
             nav_box.icon = vallhallaIconLookup(banner_maneuver["type"]);
             if( banner_maneuver.hasOwnProperty("sign") ) {
                 if(banner_maneuver["sign"].hasOwnProperty("exit_number_elements")) {
