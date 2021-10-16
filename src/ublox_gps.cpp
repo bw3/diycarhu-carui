@@ -242,7 +242,7 @@ void configUBX(int uart_fd) {
     cfgRate(uart_fd,1000,1,1);
     const uint8_t HNR_RATE[4] = {10, 0, 0, 0};
     sendUBX(uart_fd, 0x06, 0x5C, 4, HNR_RATE);
-    const uint8_t PVT_RATE[3] = {0x28, 0x00, 10};
+    const uint8_t PVT_RATE[3] = {0x28, 0x00, 1};
     sendUBX(uart_fd, 0x06, 0x1, 3, PVT_RATE);
 }
 
