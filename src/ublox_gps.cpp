@@ -438,7 +438,11 @@ void UbloxGps::decodeHNR(char* str) {
     }
     if(fix_type > 0) {
         setPosition(latitude,longitude);
-        setBearing(heading_vehicle);
+        if(vehicle_heading_valid) {
+            setBearing(heading_vehicle);
+        } else {
+            setBearing(heading_motion);
+        }
     }
     m_fix_type = fix_type;
     emit hnr_signal();
