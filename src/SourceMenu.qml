@@ -21,6 +21,10 @@ Menu {
             name: "FM Radio"
             type: "fm"
         }
+        ListElement {
+            name: "Bluetooth"
+            type: "bluetooth"
+        }
     }
 
     function action() {

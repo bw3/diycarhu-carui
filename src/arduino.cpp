@@ -60,6 +60,7 @@ void Arduino::run() {
         current_line[position-1] = 0x00;
         position = 0;
         printf("Arduino: %s\n", current_line);
+        fflush(stdout);
         QString str = current_line;
         emit msg(str);
     }

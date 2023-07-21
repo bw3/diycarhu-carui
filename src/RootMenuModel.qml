@@ -2,6 +2,12 @@ import QtQuick 2.0
 
 ListModel {
     ListElement {
+        name: "Set Destination"
+        action: function action() {
+            stack.push('NavMenu.qml');
+        }
+    }
+    ListElement {
         name: "Select Source"
         action: function action() {
             stack.push('SourceMenu.qml');
@@ -14,15 +20,15 @@ ListModel {
         }
     }
     ListElement {
-        name: "PlayAllRandom"
+        name: "Remove Bluetooth"
         action: function action() {
-            Mpd.play_all_random();
+            stack.push('BluetoothRemoveMenu.qml');
         }
     }
     ListElement {
-        name: "Set Destination"
+        name: "PlayAllRandom"
         action: function action() {
-            stack.push('NavMenu.qml');
+            Mpd.play_all_random();
         }
     }
     ListElement {

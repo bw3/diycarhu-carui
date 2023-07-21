@@ -90,7 +90,9 @@ QtObject {
     }
 
     function update() {
-        updateValhalla();
+        if(waypoints.length > 0) {
+            updateValhalla();
+        }
     }
 
     function distanceFromLineSegment(segStart,segEnd,point) {

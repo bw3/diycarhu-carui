@@ -132,6 +132,11 @@ QtObject {
                 source_box.push("RadioSourceBox.qml");
                 Mpd.pause();
                 break;
+           case "bluetooth":
+                Dsp.mux("Source", 1)
+                source_box.push("MpdSourceBox.qml");
+                Mpd.pause();
+                break;
         }
     }
 }

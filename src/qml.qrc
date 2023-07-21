@@ -8,6 +8,7 @@
 <file>SourceMenu.qml</file>
 <file>SourceMenuItem.qml</file>
 <file>BluetoothPairMenu.qml</file>
+<file>BluetoothRemoveMenu.qml</file>
 <file>AudioControl.qml</file>
 <file>BottomBar.qml</file>
 <file>MpdSourceBox.qml</file>

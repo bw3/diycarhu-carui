@@ -8,7 +8,7 @@
 
 
 // Math constants
-#define pi 3.1415926f
+//#define pi 3.1415926f
 
 
 // DSP function parameters

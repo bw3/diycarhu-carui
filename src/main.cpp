@@ -1,6 +1,7 @@
 #include <QApplication>
 #include <QQmlApplicationEngine>
 #include <QQmlContext>
+
 #include "main.h"
 #include "ublox_gps.h"
 #include "dummy_gps.h"
@@ -9,6 +10,7 @@
 #include "arduino.h"
 #include "SigmaDSP/SigmaDSP.h"
 #include "mpd.h"
+#include "bluetooth.h"
 
 #include <thread>
 
@@ -58,6 +60,8 @@ int main(int argc, char** argv)
 #endif
     Mpd mpd;
     engine.rootContext()->setContextProperty("Mpd", &mpd);
+    Bluetooth bluetooth;
+    engine.rootContext()->setContextProperty("Bluetooth", &bluetooth);
 
     engine.load(QUrl(QStringLiteral("qrc://⁄src/main.qml")));
     return app.exec();
