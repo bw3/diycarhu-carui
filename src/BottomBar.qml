@@ -25,6 +25,7 @@ Item {
             text += " (" +navRoute.distanceLegStr + " " + navRoute.timeLegStr + ") ";
             text += dateArrival.getHours() + ":" + dateArrival.getMinutes().toString().padStart(2,"0");
         }
+        text += "  " + Math.round(Gps.temperature) + " C";
         onTriggered: time.text = "                                        " + text;
     }
 }

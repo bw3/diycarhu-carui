@@ -230,6 +230,53 @@ void cfgSave(int uart_fd) {
     sendUBX(uart_fd, 0x06, 0x09, 12, payload);
 }
 
+void cfgNavX5(int uart_fd, bool use_dead_reckoning) {
+    uint8_t use_dead_reckoning_u = use_dead_reckoning ? 0x01: 0x00;
+    uint8_t payload[40] = {
+        0x02,
+        0x00,
+        0x00,// first parameters mask
+        0x00,
+        0x40,// second parameters mask
+        0x00,
+        0x00,
+        0x00,
+        0x00,
+        0x00,
+        0x00,
+        0x00,
+        0x00,
+        0x00,
+        0x00,
+        0x00,
+        0x00,
+        0x00,
+        0x00,
+        0x00,
+        0x00,
+        0x00,
+        0x00,
+        0x00,
+        0x00,
+        0x00,
+        0x00,
+        0x00,
+        0x00,
+        0x00,
+        0x00,
+        0x00,
+        0x00,
+        0x00,
+        0x00,
+        0x00,
+        0x00,
+        0x00,
+        0x00,
+        use_dead_reckoning_u// sensor fusion
+    };
+    sendUBX(uart_fd, 0x06, 0x23, 40, payload);
+}
+
 void configNMEA(int uart_fd) {
     cfgRate(uart_fd,50,1,0);
     const uint8_t RMC_RATE[3] = {0xF0, 0x04, 1};
@@ -244,6 +291,8 @@ void configUBX(int uart_fd) {
     sendUBX(uart_fd, 0x06, 0x5C, 4, HNR_RATE);
     const uint8_t PVT_RATE[3] = {0x28, 0x00, 1};
     sendUBX(uart_fd, 0x06, 0x1, 3, PVT_RATE);
+    const uint8_t ESF_RAW_RATE[3] = {0x10, 0x02, 1};
+    sendUBX(uart_fd, 0x06, 0x1, 3, ESF_RAW_RATE);
 }
 
 void UbloxGps::runRecv() {
@@ -282,6 +331,9 @@ void UbloxGps::runRecv() {
             //printf("\n");
             if( current_line[2] == 0x28 && current_line[3] == 00 && length >= 72 ) {
                 decodeHNR(current_line + 6);
+            }
+            if( current_line[2] == 0x10 && current_line[3] == 02 ) {
+                decodeESF(current_line + 6,length);
             }
             position = 0;
         } else {
@@ -438,7 +490,7 @@ void UbloxGps::decodeHNR(char* str) {
     }
     if(fix_type > 0) {
         setPosition(latitude,longitude);
-        if(vehicle_heading_valid) {
+        if(vehicle_heading_valid && fix_type == 4) {
             setBearing(heading_vehicle);
         } else {
             setBearing(heading_motion);
@@ -446,6 +498,16 @@ void UbloxGps::decodeHNR(char* str) {
     }
     m_fix_type = fix_type;
     emit hnr_signal();
+}
+
+void UbloxGps::decodeESF(char* str, size_t len) {
+    for(size_t i=4;i<len;i+=8) {
+        if(str[i+3] == 12) {
+            str[i+3] = 0x00;
+            m_temperature = ((double)decode_u32(str, i))/100;
+            emit esf_signal();
+        }
+    }
 }
 
 QString UbloxGps::fix_type_desc() {
@@ -476,6 +538,13 @@ void UbloxGps::runSetup() {
     std::thread t(lambda, this);
     std::this_thread::sleep_for(std::chrono::milliseconds(2100));
     configUBX(uart_fd);
+    if(m_temperature < 20) {
+        cfgNavX5(uart_fd, false);
+        while(m_temperature < 20) {
+            std::this_thread::sleep_for(std::chrono::milliseconds(2000));
+        }
+    }
+    cfgNavX5(uart_fd, true);
     t.join();
 }
 
